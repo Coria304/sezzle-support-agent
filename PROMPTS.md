@@ -140,3 +140,45 @@ Wins from pre-filter: v05 (spending limit → escalate), v09 (fraud → escalate
 Remaining failures unchanged — model still calls tool for policy-only questions.
 
 **Root cause confirmed:** `llama3.2:3b` lacks the instruction-following capacity to reliably discriminate tool-needed vs. policy-only at this prompt complexity. The fix is a larger model (`llama3.2` 8B or above). With a capable model (Claude Haiku, GPT-4o-mini), the same prompt structure scores 9–10/10 — the architecture is sound, the bottleneck is model size.
+
+**Chronology note:** v05 and v09 were already correct in run1 (the first run) — before the
+pre-filter existed — because the original prompt included escalation instructions and the
+model happened to escalate those two. The pre-filter was added after run1, before run3.
+Run3 added v05/v09 reliability (they no longer depend on model judgment) but did not change
+the score for the remaining 6 failures.
+
+---
+
+## Post-submission prompts
+
+**6. Post-submission improvement pass (plan mode)**
+> (Full prompt preserved in the take-home context — summarized here)
+> "Fix: authorization (uid injection), loop bound (while True), determinism (temp=0),
+> structural route derivation, pre-filter rework (LLM writes the answer, not canned),
+> output validation. Add eval.py with must_include/must_not_include checks and latency.
+> Add hostile cases. Make provider pluggable. Update docs with measured numbers only."
+
+Result: `llm.py` (provider abstraction for Ollama/OpenAI/Anthropic), `agent.py` rewritten
+with all fixes, `eval.py`, `cases/extra.jsonl` (8 hostile/edge cases).
+
+**7. Force-escalate system prompt (injected when `_FORCE_ESCALATE_RE` matches)**
+```
+[INSTRUCTIONS]
+This question involves a topic that requires a human agent (fraud, hardship, dispute filing,
+exact spending limits, or specific decline reasons). You must escalate.
+
+Do NOT call any tools. Do NOT promise any outcome, waiver, or specific action.
+You may briefly explain what Sezzle's policy says, then clearly state that you are
+connecting the customer to a human agent.
+
+Last line of your response, nothing after it:
+<route>escalate</route>
+```
+
+**8. Output violation regeneration prompt (appended when validator fires)**
+```
+Your previous answer violated a rule: {violation}.
+Please rewrite your answer without that violation.
+Remember: never state an exact spending limit, and never promise a fee waiver except
+the one automatic first-missed-payment waiver.
+```
