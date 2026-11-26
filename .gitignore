@@ -1,6 +1,8 @@
 .venv/
 __pycache__/
 *.pyc
-*.jsonl
-!CASES_-_golden_visible.jsonl
 answers*.jsonl
+# keep test cases and eval runs
+!CASES_-_golden_visible.jsonl
+!cases/
+!runs/
