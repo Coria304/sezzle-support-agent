@@ -44,7 +44,7 @@ _FORCE_ESCALATE_RE = re.compile(
     r"|didn.t (place|make|order)\b|never (placed|received|arrived|shipped)\b"
     r"|\bstolen\b|\bhacked\b"
     r"|\bhardship\b|lost (my )?job|can.t (afford|pay|make) (a |my |next )?(payment|installment)"
-    r"|\bexact (spending )?limit\b|tell me my.{0,20}limit|specific decline reason"
+    r"|\bexact (spending |credit )?limit\b|tell me my.{0,20}limit|specific decline reason"
     r"|\bfile a (dispute|chargeback|claim)\b|\bi want to (dispute|file)\b"
     r"|\border on my account i never",
     re.IGNORECASE,
@@ -270,6 +270,12 @@ def answer_question(user_id: str, question: str) -> tuple[str, str]:
             # Final answer
             text = msg.content or ""
             route, clean_answer = _extract_route(text, tool_was_called)
+
+            # Structural override: if force_escalate was active, the answer must be escalate
+            # regardless of what tag the model emitted (x07 failure class)
+            if force_escalate and route != "escalate":
+                logger.warning("Route disagreement: force_escalate=True but model tagged '%s' → overriding to 'escalate'", route)
+                route = "escalate"
 
             # Output validation — regenerate once on violation
             violation = _validate_answer(clean_answer)
